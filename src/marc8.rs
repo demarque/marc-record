@@ -1,12 +1,24 @@
+//! MARC-8 support for MARC records
+
 use core::str;
 
 use unicode_normalization::char::compose;
 
 use crate::{DecodeError, TextDecoder};
 
+/// A MARC-8 decoder for latin language text.
+///
+/// Info about decoding MARC-8 are scarce, but some sources were:
+///
+/// - https://en.wikipedia.org/wiki/MARC-8
+/// - https://en.wikipedia.org/wiki/ANSEL
+///
 pub struct Marc8Decoder {}
 
 impl TextDecoder for Marc8Decoder {
+    /// Tries to decode and transform text into valid UTF-8
+    ///
+    /// If the text is entirely ASCII, the result will simply be a reference to the original string
     fn decode<'a>(&self, text: &'a [u8]) -> Result<std::borrow::Cow<'a, str>, DecodeError> {
         // Check if all we received in practice is ASCII, which means that we can just the array as is.
         // This could be optimized using SIMD
@@ -138,6 +150,11 @@ impl TextDecoder for Marc8Decoder {
             }
 
             return Err(DecodeError::Unknown(*ch));
+        }
+
+        // If we're at the end of the string and we were working on a combining sequence, something went wrong
+        if !combining_buffer.is_empty() {
+            return Err(DecodeError::InvalidSequence);
         }
 
         return Ok(std::borrow::Cow::Owned(out));
