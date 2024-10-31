@@ -150,12 +150,6 @@ fn parse_coding_scheme(input: &mut &[u8]) -> PResult<CodingScheme> {
     }
 }
 
-#[inline]
-fn parse_char(input: &mut &[u8]) -> PResult<char> {
-    let ch = any.parse_next(input)? as char;
-    Ok(ch)
-}
-
 fn parse_status(input: &mut &[u8]) -> PResult<Status> {
     // SAFETY: the `as char` is safe because we know it's one of the limited values
     let ch = one_of(['a', 'c', 'd', 'n', 'p'])
