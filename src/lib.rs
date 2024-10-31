@@ -44,7 +44,7 @@ use marc8::Marc8Decoder;
 use thiserror::Error;
 use winnow::{
     combinator::repeat,
-    error::{ContextError, ParseError},
+    error::{ContextError, ParseError, StrContext},
     Parser,
 };
 
@@ -62,7 +62,11 @@ use winnow::{
 /// - MARC-8 encoding support is limited to latin character sets
 
 pub fn parse_records(data: &[u8]) -> Result<Vec<Record>, Error> {
-    Ok(repeat(0.., parser::parse_record).parse(data)?)
+    Ok(repeat(
+        0..,
+        parser::parse_record.context(StrContext::Label("record")),
+    )
+    .parse(data)?)
 }
 
 // Represents a parsing error
@@ -75,7 +79,7 @@ pub enum Error {
 impl From<ParseError<&[u8], ContextError>> for Error {
     fn from(value: ParseError<&[u8], ContextError>) -> Self {
         Self::ParseFailed {
-            reason: value.to_string(),
+            reason: value.inner().to_string(),
             offset: value.offset(),
         }
     }
@@ -159,6 +163,7 @@ pub enum BibliographicalLevel {
     IntegratingResource,
     Monograph,
     Serial,
+    Unknown,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -196,6 +201,9 @@ pub enum EncodingLevel {
     Prepublication,
     Unknown,
     NotApplicable,
+    ObsoleteFull,
+    ObsoleteMinimal,
+    AddedFromBatch,
 }
 
 #[derive(Debug, PartialEq, Eq)]

@@ -141,7 +141,7 @@ fn parse_dir_entry(input: &mut &[u8]) -> PResult<DirectoryEntry> {
 
 fn parse_coding_scheme(input: &mut &[u8]) -> PResult<CodingScheme> {
     // SAFETY: the `as char` is safe because we know it's one of the limited values
-    let ch = one_of([' ', 'a']).parse_next(input)? as char;
+    let ch = one_of([' ', 'a']).parse_next(input).map_err(ErrMode::cut)? as char;
 
     match ch {
         ' ' => Ok(CodingScheme::Marc8),
@@ -158,7 +158,9 @@ fn parse_char(input: &mut &[u8]) -> PResult<char> {
 
 fn parse_status(input: &mut &[u8]) -> PResult<Status> {
     // SAFETY: the `as char` is safe because we know it's one of the limited values
-    let ch = one_of(['a', 'c', 'd', 'n', 'p']).parse_next(input)? as char;
+    let ch = one_of(['a', 'c', 'd', 'n', 'p'])
+        .parse_next(input)
+        .map_err(ErrMode::cut)? as char;
 
     match ch {
         'a' => Ok(Status::IncreaseInEncoding),
@@ -175,7 +177,8 @@ fn parse_record_type(input: &mut &[u8]) -> PResult<RecordType> {
     let ch = one_of([
         'a', 'c', 'd', 'e', 'f', 'g', 'i', 'j', 'k', 'm', 'o', 'p', 'r', 't',
     ])
-    .parse_next(input)? as char;
+    .parse_next(input)
+    .map_err(ErrMode::cut)? as char;
 
     match ch {
         'a' => Ok(RecordType::LanguageMaterial),
@@ -208,7 +211,7 @@ fn parse_control_type(input: &mut &[u8]) -> PResult<ControlType> {
 
 fn parse_bibliographical_level(input: &mut &[u8]) -> PResult<BibliographicalLevel> {
     // SAFETY: the `as char` is safe because we know it's one of the limited values
-    let ch = one_of(['a', 'b', 'c', 'd', 'i', 'm', 's']).parse_next(input)? as char;
+    let ch = one_of(['a', 'b', 'c', 'd', 'i', 'm', 's', ' ']).parse_next(input)? as char;
 
     match ch {
         'a' => Ok(BibliographicalLevel::MonographicComponentPart),
@@ -218,13 +221,21 @@ fn parse_bibliographical_level(input: &mut &[u8]) -> PResult<BibliographicalLeve
         'i' => Ok(BibliographicalLevel::IntegratingResource),
         'm' => Ok(BibliographicalLevel::Monograph),
         's' => Ok(BibliographicalLevel::Serial),
+        ' ' => Ok(BibliographicalLevel::Unknown),
         _ => fail(input),
     }
 }
 
 fn parse_encoding_level(input: &mut &[u8]) -> PResult<EncodingLevel> {
     // SAFETY: the `as char` is safe because we know it's one of the limited values
-    let ch = one_of([' ', '1', '2', '3', '4', '5', '7', '8', 'u', 'z']).parse_next(input)? as char;
+    let ch = one_of([
+        ' ', '1', '2', '3', '4', '5', '7', '8', 'u', 'z', 'I', 'k', 'K', 'M',
+        // Found in the wild, value unknown
+        'a', 'i', 'J', 'C', 'L', '|', 'X', '0', 'T',
+    ])
+    .context(StrContext::Label("encoding level"))
+    .parse_next(input)
+    .map_err(ErrMode::cut)? as char;
 
     match ch {
         ' ' => Ok(EncodingLevel::Full),
@@ -237,21 +248,30 @@ fn parse_encoding_level(input: &mut &[u8]) -> PResult<EncodingLevel> {
         '8' => Ok(EncodingLevel::Prepublication),
         'u' => Ok(EncodingLevel::Unknown),
         'z' => Ok(EncodingLevel::NotApplicable),
+        'i' | 'I' => Ok(EncodingLevel::ObsoleteFull),
+        'k' | 'K' => Ok(EncodingLevel::ObsoleteMinimal),
+        'M' => Ok(EncodingLevel::AddedFromBatch),
+        '0' | 'a' | 'J' | 'L' | 'C' | '|' | 'X' | 'T' => Ok(EncodingLevel::Unknown),
         _ => fail(input),
     }
 }
 
 fn parse_descriptive_cataloging_form(input: &mut &[u8]) -> PResult<CatalogingForm> {
     // SAFETY: the `as char` is safe because we know it's one of the limited values
-    let ch = one_of([' ', 'a', 'c', 'i', 'n', 'u']).parse_next(input)? as char;
+    let ch = one_of([
+        ' ', 'a', 'c', 'C', 'i', 'n', 'u', // Found in the wild, value unknown
+        's', '|', 'd', 'q', 'I',
+    ])
+    .parse_next(input)
+    .map_err(ErrMode::cut)? as char;
 
     match ch {
         ' ' => Ok(CatalogingForm::NonIsbd),
         'a' => Ok(CatalogingForm::Aacr2),
-        'c' => Ok(CatalogingForm::IsbdPunctuationOmitted),
-        'i' => Ok(CatalogingForm::IsbdPunctuationIncluded),
+        'c' | 'C' => Ok(CatalogingForm::IsbdPunctuationOmitted),
+        'i' | 'I' => Ok(CatalogingForm::IsbdPunctuationIncluded),
         'n' => Ok(CatalogingForm::NonIsbdPunctuationOmitted),
-        'u' => Ok(CatalogingForm::Unknown),
+        'u' | 's' | '|' | 'd' | 'q' => Ok(CatalogingForm::Unknown),
 
         _ => fail(input),
     }
@@ -261,7 +281,9 @@ fn parse_multipart_resource_record_level(
     input: &mut &[u8],
 ) -> PResult<MultipartResourceRecordLevel> {
     // SAFETY: the `as char` is safe because we know it's one of the limited values
-    let ch = one_of([' ', 'a', 'b', 'c']).parse_next(input)? as char;
+    let ch = one_of([' ', 'a', 'b', 'c'])
+        .parse_next(input)
+        .map_err(ErrMode::cut)? as char;
 
     match ch {
         ' ' => Ok(MultipartResourceRecordLevel::NotApplicable),
@@ -287,17 +309,34 @@ pub fn parse_leader(input: &mut &[u8]) -> PResult<Leader> {
     let status = parse_status
         .context(StrContext::Label("status"))
         .parse_next(input)?;
-    let record_type = parse_record_type.parse_next(input)?;
-    let bibliographical_level = parse_bibliographical_level.parse_next(input)?;
-    let control_type = parse_control_type.parse_next(input)?;
-    let coding_scheme = parse_coding_scheme.parse_next(input)?;
-    '2'.parse_next(input)?; // Indicator count
-    '2'.parse_next(input)?; // Subfield code count
-    let data_base_address = parse_fixed_num::<5>.parse_next(input)?;
-    let encoding_level = parse_encoding_level.parse_next(input)?;
-    let descriptive_cataloging_form = parse_descriptive_cataloging_form.parse_next(input)?;
-    let multipart_resource_record_level =
-        parse_multipart_resource_record_level.parse_next(input)?;
+    let record_type = parse_record_type
+        .context(StrContext::Label("record type"))
+        .parse_next(input)?;
+    let bibliographical_level = parse_bibliographical_level
+        .context(StrContext::Label("bibliographical level"))
+        .parse_next(input)?;
+    let control_type = parse_control_type
+        .context(StrContext::Label("control type"))
+        .parse_next(input)?;
+    let coding_scheme = parse_coding_scheme
+        .context(StrContext::Label("coding scheme"))
+        .parse_next(input)?;
+    '2'.context(StrContext::Label("indicator count"))
+        .parse_next(input)?; // Indicator count
+    '2'.context(StrContext::Label("subfield code count"))
+        .parse_next(input)?; // Subfield code count
+    let data_base_address = parse_fixed_num::<5>
+        .context(StrContext::Label("data base address"))
+        .parse_next(input)?;
+    let encoding_level = parse_encoding_level
+        .context(StrContext::Label("encoding level"))
+        .parse_next(input)?;
+    let descriptive_cataloging_form = parse_descriptive_cataloging_form
+        .context(StrContext::Label("descriptive cataloging form"))
+        .parse_next(input)?;
+    let multipart_resource_record_level = parse_multipart_resource_record_level
+        .context(StrContext::Label("multipart resource record level"))
+        .parse_next(input)?;
     '4'.parse_next(input)?;
     '5'.parse_next(input)?;
     '0'.parse_next(input)?;
@@ -323,7 +362,8 @@ pub fn parse_record(input: &mut &[u8]) -> PResult<Record> {
         .parse_next(input)?;
     let directory = parse_directory_entries
         .context(StrContext::Label("directory"))
-        .parse_next(input)?;
+        .parse_next(input)
+        .map_err(ErrMode::cut)?;
     let decoder = leader.coding_scheme.decoder();
     let fields = parse_data(&decoder, &directory, input)?;
     #[allow(const_item_mutation)]
@@ -351,6 +391,16 @@ mod tests {
         assert_eq!(leader.status, Status::Corrected);
         assert_eq!(leader.coding_scheme, CodingScheme::Marc8);
         assert_eq!(leader.data_base_address, 385);
+    }
+
+    #[test]
+    fn it_parses_another_leader() {
+        let input = &b"01631ca  a2200409a  4500";
+        let leader = parse_leader(&mut &input[..]).unwrap();
+        assert_eq!(leader.record_length, 1631);
+        assert_eq!(leader.status, Status::Corrected);
+        assert_eq!(leader.coding_scheme, CodingScheme::Ucs);
+        assert_eq!(leader.data_base_address, 409);
     }
 
     #[test]
