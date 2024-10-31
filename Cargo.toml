@@ -1,7 +1,15 @@
 [package]
 name = "marc-record"
-version = "0.1.0"
+authors = ["Jean-Philippe Bougie"]
+version = "0.5.0"
+description = "A MARC21 parser supporting MARC-8 text encoding"
 edition = "2021"
+documentation = "https://docs.rs/bitflags"
+repository = "https://github.com/demarque/marc-record"
+license = "MIT"
+readme = "README.md"
+keywords = ["marc", "marc21"]
+categories = ["parser-implementations"]
 
 [dependencies]
 thiserror = "1.0.64"
