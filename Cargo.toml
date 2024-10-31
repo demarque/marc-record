@@ -1,7 +1,7 @@
 [package]
 name = "marc-record"
 authors = ["Jean-Philippe Bougie"]
-version = "0.5.0"
+version = "0.5.1"
 description = "A MARC21 parser supporting MARC-8 text encoding"
 edition = "2021"
 documentation = "https://docs.rs/marc-record"
