@@ -12,7 +12,7 @@ Getting started
 Add the crate to your rust library:
 
 ```sh
-cargo install marc-record
+cargo add marc-record
 ```
 
 Load, parse and inspect a record:
