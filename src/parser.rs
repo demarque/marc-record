@@ -283,7 +283,7 @@ fn parse_multipart_resource_record_level(
         ' ' => Ok(MultipartResourceRecordLevel::NotApplicable),
         'a' => Ok(MultipartResourceRecordLevel::Set),
         'b' => Ok(MultipartResourceRecordLevel::PartWithIndependentTitle),
-        'c' => Ok(MultipartResourceRecordLevel::PartwithDependentTitle),
+        'c' => Ok(MultipartResourceRecordLevel::PartWithDependentTitle),
 
         _ => fail(input),
     }
