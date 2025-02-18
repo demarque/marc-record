@@ -221,7 +221,7 @@ pub enum MultipartResourceRecordLevel {
     NotApplicable,
     Set,
     PartWithIndependentTitle,
-    PartwithDependentTitle,
+    PartWithDependentTitle,
 }
 
 enum Decoder {
