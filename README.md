@@ -22,7 +22,7 @@ use std::io::Read;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut contents = Vec::new();
-    File::open("./record.mrc")?.read_to_end(&mut contents)?;
+    File::open(path_to_my_file)?.read_to_end(&mut contents)?;
     let records = marc_record::parse_records(&contents)?;
     println!("File contains {} records", records.len());
     let record1 = &records[0];
