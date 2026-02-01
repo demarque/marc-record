@@ -6,7 +6,7 @@ use winnow::{
     error::{AddContext, ContextError, ErrMode, FromExternalError, StrContext, StrContextValue},
     stream::Stream,
     token::{any, one_of, take, take_while},
-    PResult, Parser,
+    ModalResult, Parser,
 };
 
 use crate::{
@@ -20,7 +20,7 @@ fn parse_field(
     decoder: &dyn TextDecoder,
     entry: &DirectoryEntry,
     input: &mut &[u8],
-) -> PResult<Field> {
+) -> ModalResult<Field> {
     if entry.is_control() {
         let data = take(entry.field_length - 1)
             .verify_map(|data: &[u8]| std::str::from_utf8(data).map(|s| s.to_owned()).ok())
@@ -90,7 +90,7 @@ fn parse_data(
     decoder: &dyn TextDecoder,
     dir: &[DirectoryEntry],
     input: &mut &[u8],
-) -> PResult<Vec<Field>> {
+) -> ModalResult<Vec<Field>> {
     // At this point, we should be at the beginning of the data section. We need
     // to use the offset from each entry to locate the field.
     let mut fields = Vec::with_capacity(dir.len());
@@ -109,13 +109,13 @@ fn parse_data(
 }
 
 #[allow(const_item_mutation)]
-fn parse_directory_entries(input: &mut &[u8]) -> PResult<Vec<DirectoryEntry>> {
+fn parse_directory_entries(input: &mut &[u8]) -> ModalResult<Vec<DirectoryEntry>> {
     let entries = repeat(0.., parse_dir_entry).parse_next(input)?;
     FIELD_SEPARATOR.parse_next(input)?;
     Ok(entries)
 }
 
-fn parse_dir_entry(input: &mut &[u8]) -> PResult<DirectoryEntry> {
+fn parse_dir_entry(input: &mut &[u8]) -> ModalResult<DirectoryEntry> {
     let mut tag = [' '; 3];
     let t: Vec<char> = repeat(
         3usize,
@@ -139,7 +139,7 @@ fn parse_dir_entry(input: &mut &[u8]) -> PResult<DirectoryEntry> {
     })
 }
 
-fn parse_coding_scheme(input: &mut &[u8]) -> PResult<CodingScheme> {
+fn parse_coding_scheme(input: &mut &[u8]) -> ModalResult<CodingScheme> {
     // SAFETY: the `as char` is safe because we know it's one of the limited values
     let ch = one_of([' ', 'a']).parse_next(input).map_err(ErrMode::cut)? as char;
 
@@ -150,7 +150,7 @@ fn parse_coding_scheme(input: &mut &[u8]) -> PResult<CodingScheme> {
     }
 }
 
-fn parse_status(input: &mut &[u8]) -> PResult<Status> {
+fn parse_status(input: &mut &[u8]) -> ModalResult<Status> {
     // SAFETY: the `as char` is safe because we know it's one of the limited values
     let ch = one_of(['a', 'c', 'd', 'n', 'p'])
         .parse_next(input)
@@ -166,7 +166,7 @@ fn parse_status(input: &mut &[u8]) -> PResult<Status> {
     }
 }
 
-fn parse_record_type(input: &mut &[u8]) -> PResult<RecordType> {
+fn parse_record_type(input: &mut &[u8]) -> ModalResult<RecordType> {
     // SAFETY: the `as char` is safe because we know it's one of the limited values
     let ch = one_of([
         'a', 'c', 'd', 'e', 'f', 'g', 'i', 'j', 'k', 'm', 'o', 'p', 'r', 't',
@@ -193,7 +193,7 @@ fn parse_record_type(input: &mut &[u8]) -> PResult<RecordType> {
     }
 }
 
-fn parse_control_type(input: &mut &[u8]) -> PResult<ControlType> {
+fn parse_control_type(input: &mut &[u8]) -> ModalResult<ControlType> {
     // SAFETY: the `as char` is safe because we know it's one of the limited values
     let ch = one_of([' ', 'a']).parse_next(input)? as char;
     match ch {
@@ -203,7 +203,7 @@ fn parse_control_type(input: &mut &[u8]) -> PResult<ControlType> {
     }
 }
 
-fn parse_bibliographical_level(input: &mut &[u8]) -> PResult<BibliographicalLevel> {
+fn parse_bibliographical_level(input: &mut &[u8]) -> ModalResult<BibliographicalLevel> {
     // SAFETY: the `as char` is safe because we know it's one of the limited values
     let ch = one_of(['a', 'b', 'c', 'd', 'i', 'm', 's', ' ']).parse_next(input)? as char;
 
@@ -220,7 +220,7 @@ fn parse_bibliographical_level(input: &mut &[u8]) -> PResult<BibliographicalLeve
     }
 }
 
-fn parse_encoding_level(input: &mut &[u8]) -> PResult<EncodingLevel> {
+fn parse_encoding_level(input: &mut &[u8]) -> ModalResult<EncodingLevel> {
     // SAFETY: the `as char` is safe because we know it's one of the limited values
     let ch = one_of([
         ' ', '1', '2', '3', '4', '5', '7', '8', 'u', 'z', 'I', 'k', 'K', 'M',
@@ -250,7 +250,7 @@ fn parse_encoding_level(input: &mut &[u8]) -> PResult<EncodingLevel> {
     }
 }
 
-fn parse_descriptive_cataloging_form(input: &mut &[u8]) -> PResult<CatalogingForm> {
+fn parse_descriptive_cataloging_form(input: &mut &[u8]) -> ModalResult<CatalogingForm> {
     // SAFETY: the `as char` is safe because we know it's one of the limited values
     let ch = one_of([
         ' ', 'a', 'c', 'C', 'i', 'n', 'u', // Found in the wild, value unknown
@@ -273,7 +273,7 @@ fn parse_descriptive_cataloging_form(input: &mut &[u8]) -> PResult<CatalogingFor
 
 fn parse_multipart_resource_record_level(
     input: &mut &[u8],
-) -> PResult<MultipartResourceRecordLevel> {
+) -> ModalResult<MultipartResourceRecordLevel> {
     // SAFETY: the `as char` is safe because we know it's one of the limited values
     let ch = one_of([' ', 'a', 'b', 'c'])
         .parse_next(input)
@@ -289,11 +289,11 @@ fn parse_multipart_resource_record_level(
     }
 }
 
-fn parse_fixed_num<const I: usize>(input: &mut &[u8]) -> PResult<u16> {
+fn parse_fixed_num<const I: usize>(input: &mut &[u8]) -> ModalResult<u16> {
     take(I).and_then(digit1).parse_to().parse_next(input)
 }
 
-pub fn parse_leader(input: &mut &[u8]) -> PResult<Leader> {
+pub fn parse_leader(input: &mut &[u8]) -> ModalResult<Leader> {
     let length = parse_fixed_num::<5>
         .context(StrContext::Label("record length"))
         .context(StrContext::Expected(StrContextValue::Description(
@@ -350,7 +350,7 @@ pub fn parse_leader(input: &mut &[u8]) -> PResult<Leader> {
     })
 }
 
-pub fn parse_record(input: &mut &[u8]) -> PResult<Record> {
+pub fn parse_record(input: &mut &[u8]) -> ModalResult<Record> {
     let leader = parse_leader
         .context(StrContext::Label("leader"))
         .parse_next(input)?;
